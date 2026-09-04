@@ -1,0 +1,27 @@
+# CODEOWNERS 예시
+#
+# 실제 GitHub ID 를 확인한 뒤 아래 placeholder 를 바꾸고
+# 이 파일을 .github/CODEOWNERS 로 복사한다.
+#
+# 잘못된 ID 가 들어가면 리뷰어 자동 지정이 조용히 실패한다.
+# 복사 전에 세 사람의 ID 를 각자에게 직접 확인할 것.
+#
+#   GITHUB_ID_JIHO   김지호 (프론트엔드)
+#   GITHUB_ID_TAEHAN 김태한 (백엔드)
+#   GITHUB_ID_YOUNGJUN 박영준 (DB · AI)
+
+# 기본 소유자
+*                       @GITHUB_ID_TAEHAN
+
+# 스키마와 마이그레이션 — 두 명 공동 리뷰
+/prisma/                @GITHUB_ID_TAEHAN @GITHUB_ID_YOUNGJUN
+
+# AI 파이프라인과 외부 연동 — 두 명 공동 리뷰
+/src/modules/ai/        @GITHUB_ID_TAEHAN @GITHUB_ID_YOUNGJUN
+/src/integrations/      @GITHUB_ID_TAEHAN @GITHUB_ID_YOUNGJUN
+/experiments/ai/        @GITHUB_ID_YOUNGJUN
+/docs/ai/               @GITHUB_ID_YOUNGJUN
+/docs/database/         @GITHUB_ID_TAEHAN @GITHUB_ID_YOUNGJUN
+
+# API 계약 — 모바일 담당도 함께 본다
+/docs/specs/02-api-v1.md  @GITHUB_ID_TAEHAN @GITHUB_ID_JIHO

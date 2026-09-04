@@ -1,0 +1,86 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  verify:
+    name: lint · test · build
+    runs-on: ubuntu-latest
+
+    # 로컬 개발용 고정값이다. 실제 비밀키는 CI 에 넣지 않는다.
+    env:
+      NODE_ENV: test
+      PORT: 8000
+      DATABASE_URL: postgresql://postgres:devpass@localhost:5432/p2j?schema=public
+      REDIS_URL: redis://localhost:6379
+      SERVICE_DAY_START_HOUR: 4
+
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: devpass
+          POSTGRES_DB: p2j
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d p2j"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: 의존성 설치
+        run: npm ci
+
+      - name: 포맷 검사
+        run: npm run format:check
+
+      - name: 린트
+        run: npm run lint
+
+      - name: Prisma 스키마 포맷 검사
+        # prisma format 에는 --check 옵션이 없다. 포맷 후 변경이 생기면 실패시킨다.
+        run: |
+          npm run prisma:format
+          git diff --exit-code -- prisma/
+
+      - name: Prisma 스키마 검증
+        run: npm run prisma:validate
+
+      - name: Prisma Client 생성
+        run: npm run prisma:generate
+
+      - name: 단위 테스트
+        run: npm test
+
+      - name: 빌드
+        run: npm run build
+
+      - name: e2e 테스트 (PostgreSQL + Redis 연결 확인)
+        run: npm run test:e2e

@@ -1,0 +1,36 @@
+# 의존성
+/node_modules
+
+# 빌드 산출물
+/dist
+/build
+*.tsbuildinfo
+
+# 환경변수 — .env.example만 커밋한다
+.env
+.env.*
+!.env.example
+
+# Prisma 생성 코드 (npm run prisma:generate 로 재생성)
+/src/generated
+
+# 테스트·커버리지
+/coverage
+/.nyc_output
+
+# 로그
+*.log
+npm-debug.log*
+logs
+
+# 에디터·OS
+.idea
+.vscode
+.DS_Store
+Thumbs.db
+
+# 서비스 계정 키 — 절대 커밋 금지
+*firebase-adminsdk*.json
+*service-account*.json
+*.pem
+*.p12
