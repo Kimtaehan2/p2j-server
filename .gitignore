@@ -1,31 +1,26 @@
-# 의존성
-/node_modules
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.coverage
+htmlcov/
 
-# 빌드 산출물
-/dist
-/build
-*.tsbuildinfo
-
-# 환경변수 — .env.example만 커밋한다
+# 환경변수 — .env.example 만 커밋한다
 .env
 .env.*
 !.env.example
 
-# Prisma 생성 코드 (npm run prisma:generate 로 재생성)
-/src/generated
-
-# 테스트·커버리지
-/coverage
-/.nyc_output
-
 # 로그
 *.log
-npm-debug.log*
-logs
+logs/
 
 # 에디터·OS
-.idea
-.vscode
+.idea/
+.vscode/
 .DS_Store
 Thumbs.db
 
@@ -34,3 +29,6 @@ Thumbs.db
 *service-account*.json
 *.pem
 *.p12
+
+# 실험 노트북 산출물
+experiments/**/.ipynb_checkpoints/

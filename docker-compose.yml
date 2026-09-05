@@ -1,5 +1,5 @@
 # 로컬 개발용 PostgreSQL 과 Redis 만 띄운다.
-# 앱 컨테이너는 아직 만들지 않는다. 서버는 호스트에서 npm run start:dev 로 실행한다.
+# 앱 컨테이너는 아직 만들지 않는다. 서버는 호스트에서 uv run uvicorn 으로 실행한다 (README 2절).
 #
 #   docker compose up -d      시작
 #   docker compose down       정지 (데이터는 named volume 에 남는다)

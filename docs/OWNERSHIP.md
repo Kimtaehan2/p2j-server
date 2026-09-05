@@ -10,16 +10,16 @@
 
 ### 김태한 — 백엔드
 
-- NestJS 공통 구조 (필터 · 인터셉터 · 가드 · 파이프)
-- 일반 API (`auth`, `goals`, `todos`, `stats`, `groups`, `declarations`, `proofs`)
+- FastAPI 공통 구조 (`app/core/`, `app/main.py`: 예외 핸들러 · 응답 래퍼 · 인증 Depends)
+- 일반 API (`auth`, `users`, `goals`, `todos`, `stats`, `groups`, `declarations`, `proofs`)
 - Redis, Firebase Storage, Railway 배포
 - DB 운영과 마이그레이션 적용
 
 ### 박영준 — DB & AI
 
-- ERD 와 Prisma 모델 설계
-- AI `parse`, `load-check`, 3단계 폴백
-- 클로바 STT · LLM 연동
+- ERD 와 SQLAlchemy 모델 설계
+- AI `parse`, `load-check`, 3단계 폴백 (`app/services/ai/`)
+- LLM 연동 · (P1) 클로바 STT
 - 집계 쿼리와 데이터 검증
 
 ## 공동 리뷰가 필요한 경로
@@ -28,16 +28,15 @@
 
 | 경로 | 리뷰어 |
 | --- | --- |
-| `prisma/schema.prisma` | 김태한 + 박영준 |
-| `prisma/migrations/**` | 김태한 + 박영준 |
-| `prisma/seed.ts` | 김태한 + 박영준 |
-| `src/modules/ai/**` | 김태한 + 박영준 |
-| `src/integrations/**` | 김태한 + 박영준 |
-| API 요청·응답 형식 변경 | 김태한 + 김지호 |
-| 서버 seed 와 모바일 Mock 의 일치 | 김태한 + 김지호 |
+| `app/db/models/**` | 김태한 + 박영준 |
+| `alembic/versions/**` | 김태한 + 박영준 |
+| `app/services/ai/**` | 김태한 + 박영준 |
+| `app/services/stats.py` | 김태한 + 박영준 |
+| API 요청·응답 형식 변경 (`app/schemas/**`, `app/core/errors.py`) | 김태한 + 김지호 |
+| 서버 seed 와 모바일 Mock fixture 의 일치 | 김태한 + 김지호 |
 
 **이유**: 스키마와 마이그레이션은 되돌리기 어렵다. API 형식은 두 저장소가 동시에 깨진다.
-`seed.ts` 는 모바일 Mock fixture 와 같은 데이터를 만들어야 실서버 전환 시 화면이 그대로 보인다.
+seed 는 모바일 Mock fixture 와 같은 데이터를 만들어야 실서버 전환 시 화면이 그대로 보인다.
 
 ## CODEOWNERS
 

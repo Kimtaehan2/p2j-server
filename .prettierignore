@@ -1,7 +1,0 @@
-# Prisma 가 생성하는 코드는 포맷 검사 대상이 아니다.
-src/generated
-
-dist
-coverage
-node_modules
-package-lock.json

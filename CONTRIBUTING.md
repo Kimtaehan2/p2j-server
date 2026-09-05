@@ -18,7 +18,7 @@
 ```
 feat/server-auth
 feat/server-goals
-feat/data-prisma-schema
+feat/data-models
 feat/ai-parse
 fix/server-refresh-rotation
 docs/api-v1
@@ -33,7 +33,7 @@ chore/ci
 Conventional Commits 를 쓴다.
 
 ```
-chore: bootstrap p2j server
+chore: bootstrap fastapi server
 feat(auth): add refresh token rotation
 feat(ai): add structured goal parser
 chore(db): add goal constraints
@@ -44,10 +44,10 @@ docs(api): update error code table
 ## PR 을 올리기 전에
 
 ```bash
-npm run format
-npm run lint
-npm test
-npm run build
+uv run ruff format .
+uv run ruff check .
+uv run mypy app
+uv run pytest
 ```
 
 CI 에서 도는 것과 같다. 로컬에서 먼저 돌리면 리뷰가 빨라진다.
@@ -71,24 +71,29 @@ CI 에서 도는 것과 같다. 로컬에서 먼저 돌리면 리뷰가 빨라�
 
 `docs/database/migration-policy.md` 를 따른다. 요약하면:
 
-- `npx prisma migrate dev --create-only` 로 SQL 을 먼저 만들고 **눈으로 검토**한다.
-- Prisma 가 표현하지 못하는 CHECK · partial index 는 `migration.sql` 에 직접 넣는다.
+- `uv run alembic revision --autogenerate -m "..."` 로 파일을 만들고 **눈으로 검토**한다.
+- autogenerate 가 놓치는 CHECK · partial index 는 마이그레이션 파일에 직접 넣는다.
 - 이미 머지·적용된 마이그레이션은 고치지도 지우지도 않는다.
-- `prisma/**` 변경은 김태한 · 박영준 두 명의 리뷰를 받는다.
+- `app/db/models/**`, `alembic/versions/**` 변경은 김태한 · 박영준 두 명의 리뷰를 받는다.
 
 ## 코드 규칙
 
 - **주석과 사용자 노출 문구는 한국어**, 변수·함수·파일 이름은 영어.
-- 상대 경로 import 에 **`.js` 확장자**를 붙인다 (`./app.module.js`). ESM + `nodenext` 규칙이다.
-- 날짜는 `common/utils/service-day.ts` 로만 구한다. `new Date()` 로 "오늘"을 만들지 않는다.
-- 비밀번호, 토큰, `raw_text`, 접속 URL 은 **로그에 남기지 않는다.**
-- `.env` 를 커밋하지 않는다. 새 환경변수를 추가하면 `.env.example` 에 키만 넣는다.
+  단, `alembic.ini` 는 OS 로캘로 읽히므로 **영어만** 쓴다 (한국어 Windows 에서 cp949 오류).
+- **엔드포인트 파일에 로직을 쓰지 않는다.** 검증 → 서비스 호출 → `ok()` 래핑. 로직은 `app/services/`.
+- 오류는 `AppError` 로만 던진다. 코드는 `ERROR_CATALOG` 에 먼저 등록한다. `fastapi.HTTPException` 을 쓰지 않는다.
+- 오늘 날짜는 `app/core/time.py` 의 `service_today()` 로만 구한다. `datetime.now().date()` 로 "오늘"을 만들지 않는다.
+- 시각 직렬화는 `to_kst_iso()`. 응답에 naive datetime 을 그대로 넣지 않는다.
+- 비밀번호, 토큰, AI 입력 원문, 접속 URL 은 **로그에 남기지 않는다.**
+- `.env` 를 커밋하지 않는다. 새 환경변수를 추가하면 `Settings` 와 `.env.example` 양쪽에 넣는다.
 - 빈 모듈을 미리 만들지 않는다. 구현을 시작할 때 그 모듈을 만든다.
+- 의존성을 추가하면 `uv.lock` 을 함께 커밋한다.
 
 ## 리뷰에서 볼 것
 
 - 응답이 `{ data }` 형식인가. 204 를 감싸고 있지는 않은가.
-- 오류가 `AppException` 으로 나가는가. 코드가 `02-api-v1.md` 7절 표에 있는가.
-- 새 컨트롤러에 인증이 걸려 있는가 (가드는 전역이지만 `@Public()` 을 잘못 붙이지 않았는지).
-- 날짜 계산이 `service-day.ts` 를 쓰는가.
-- 목록 조회에 N+1 이 없는가.
+- 오류가 `AppError` 로 나가는가. 코드가 `02-api-v1.md` §1.4 표와 `ERROR_CATALOG` 에 있는가. `message` 가 한국어인가.
+- 새 엔드포인트에 `CurrentUser` 가 걸려 있는가 (인증 없는 경로는 4개뿐).
+- 날짜 계산이 `service_today()` 를 쓰는가.
+- 목록 조회에 N+1 이 없는가 (`selectinload` / join).
+- 마이그레이션 파일을 사람이 읽었는가. 인덱스·CHECK 가 빠지지 않았는가.

@@ -11,15 +11,16 @@ concurrency:
 
 jobs:
   verify:
-    name: lint · test · build
+    name: lint · type · test · migrate
     runs-on: ubuntu-latest
 
     # 로컬 개발용 고정값이다. 실제 비밀키는 CI 에 넣지 않는다.
     env:
-      NODE_ENV: test
+      APP_ENV: test
       PORT: 8000
-      DATABASE_URL: postgresql://postgres:devpass@localhost:5432/p2j?schema=public
-      REDIS_URL: redis://localhost:6379
+      DATABASE_URL: postgresql+asyncpg://postgres:devpass@localhost:5432/p2j
+      REDIS_URL: redis://localhost:6379/0
+      JWT_SECRET: ci-only-secret-ci-only-secret-ci-only-32
       SERVICE_DAY_START_HOUR: 4
 
     services:
@@ -50,37 +51,41 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-node@v4
+      - name: uv 설치
+        uses: astral-sh/setup-uv@v5
         with:
-          node-version-file: .nvmrc
-          cache: npm
+          enable-cache: true
 
-      - name: 의존성 설치
-        run: npm ci
+      - name: Python 3.12
+        run: uv python install 3.12
+
+      - name: 의존성 설치 (uv.lock 그대로)
+        run: uv sync --frozen
 
       - name: 포맷 검사
-        run: npm run format:check
+        run: uv run ruff format --check .
 
       - name: 린트
-        run: npm run lint
+        run: uv run ruff check .
 
-      - name: Prisma 스키마 포맷 검사
-        # prisma format 에는 --check 옵션이 없다. 포맷 후 변경이 생기면 실패시킨다.
+      - name: 타입 검사
+        run: uv run mypy app
+
+      - name: 테스트
+        run: uv run pytest -q
+
+      - name: 마이그레이션 적용 (PostgreSQL 실제 연결)
+        run: uv run alembic upgrade head
+
+      - name: 마이그레이션이 모델과 일치하는지 확인
+        # 모델과 DB 가 어긋나면 autogenerate 가 변경을 제안한다. 그 경우 실패시킨다.
+        run: uv run alembic check
+
+      - name: 헬스체크 (PostgreSQL + Redis 실제 연결)
         run: |
-          npm run prisma:format
-          git diff --exit-code -- prisma/
-
-      - name: Prisma 스키마 검증
-        run: npm run prisma:validate
-
-      - name: Prisma Client 생성
-        run: npm run prisma:generate
-
-      - name: 단위 테스트
-        run: npm test
-
-      - name: 빌드
-        run: npm run build
-
-      - name: e2e 테스트 (PostgreSQL + Redis 연결 확인)
-        run: npm run test:e2e
+          uv run uvicorn app.main:app --host 127.0.0.1 --port 8000 &
+          for i in $(seq 1 20); do
+            if curl -sf http://127.0.0.1:8000/v1/health; then echo; exit 0; fi
+            sleep 1
+          done
+          echo "health check failed"; curl -s http://127.0.0.1:8000/v1/health; exit 1

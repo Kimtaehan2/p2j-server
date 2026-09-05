@@ -6,7 +6,7 @@
 *.webp binary
 *.ico binary
 
-package-lock.json linguist-generated=true -diff
+uv.lock linguist-generated=true -diff
 
 # 명세 원문은 원본을 그대로 복사한 것이다. 공백까지 손대지 않는다.
 docs/specs/*.md -whitespace linguist-documentation=true

@@ -11,7 +11,7 @@ P2J 는 모노레포를 쓰지 않는다. 저장소를 두 개로 나눈다.
 | 저장소 | 내용 | 담당 |
 | --- | --- | --- |
 | `p2j-mobile` | Flutter 앱 | 김지호 |
-| `p2j-server` | NestJS · Prisma · PostgreSQL · Redis · DB · AI | 김태한(서버) · 박영준(DB·AI) |
+| `p2j-server` | FastAPI · SQLAlchemy · PostgreSQL · Redis · DB · AI (스택은 `0003-fastapi.md`) | 김태한(서버) · 박영준(DB·AI) |
 
 **DB 와 운영 AI 코드는 모두 `p2j-server` 안에 둔다.**
 `p2j-db`, `p2j-ai` 같은 저장소를 따로 만들지 않는다.
@@ -22,7 +22,7 @@ P2J 는 모노레포를 쓰지 않는다. 저장소를 두 개로 나눈다.
   한 저장소에 두면 모바일 PR 마다 서버 CI 가 돌고 그 반대도 마찬가지다.
 - **3인 팀에서 충돌 관리가 쉽다.** FE 와 BE 가 API 계약만 지키면 서로의 내부 구현을 볼 일이 없다.
 - **AI 코드를 따로 떼면 배포 대상이 하나 더 늘어난다.** 학기 프로젝트에서 감당할 이유가 없다.
-  AI 는 서버 안의 모듈(`src/modules/ai`, `src/integrations/`)로 둔다.
+  AI 는 서버 안의 모듈(`app/services/ai/`)로 둔다.
 
 ## API 계약의 원본
 
