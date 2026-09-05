@@ -19,11 +19,12 @@ from app.core.errors import (
     GoalNotFound,
     TodoNotFound,
 )
-from app.core.time import now_utc, service_today, week_range
+from app.core.time import now_utc, service_today
 from app.db.models.goal import Goal
 from app.db.models.todo import Todo
 from app.db.models.user import User
 from app.schemas.todo import (
+    TodoBulkRequest,
     TodoCompleteRequest,
     TodoCreateRequest,
     TodoPostponeRequest,
@@ -31,6 +32,7 @@ from app.schemas.todo import (
     summary_dict,
     todo_to_dict,
 )
+from app.services.goals import goal_progress
 
 DATE_PAST_LIMIT_DAYS = 30
 DATE_FUTURE_LIMIT_DAYS = 365
@@ -159,6 +161,54 @@ async def create_todo(db: AsyncSession, user: User, body: TodoCreateRequest) -> 
     return todo
 
 
+async def create_bulk(db: AsyncSession, user: User, body: TodoBulkRequest) -> list[Todo]:
+    """§5 /todos/bulk. 항목 검증은 단건과 같고, 실패 시 details 키는 items[i].field.
+
+    같은 세션에서 예외가 나면 get_db 가 rollback 하므로 부분 저장이 남지 않는다.
+    """
+    today = service_today()
+    goal_cache: dict[int, Goal] = {}
+    todos: list[Todo] = []
+    next_order: dict[date, int] = {}
+
+    for i, item in enumerate(body.items):
+        day = item.date or today
+        try:
+            _check_date_range(day, today)
+            goal = None
+            if item.goal_id is not None:
+                goal = goal_cache.get(item.goal_id) or await _resolve_goal(db, user, item.goal_id)
+                goal_cache[item.goal_id] = goal  # type: ignore[assignment]
+        except FieldValidationError as exc:
+            raise FieldValidationError(
+                {f"items[{i}].{k}": v for k, v in exc.details.items()}
+            ) from exc
+        except GoalNotFound as exc:
+            raise FieldValidationError({f"items[{i}].goal_id": "목표를 찾을 수 없어요."}) from exc
+
+        if day not in next_order:
+            next_order[day] = await _next_order(db, user, day)
+        todos.append(
+            Todo(
+                user_id=user.user_id,
+                goal_id=goal.goal_id if goal else None,
+                title=item.title,
+                date=day,
+                source=body.source,
+                estimated_minutes=item.estimated_minutes,
+                memo=item.memo,
+                display_order=next_order[day],
+            )
+        )
+        next_order[day] += 1
+
+    db.add_all(todos)
+    await db.flush()
+    for t in todos:
+        await db.refresh(t)
+    return todos
+
+
 LOCKED_FIELDS = {"title", "date", "goal_id"}
 
 
@@ -253,45 +303,3 @@ async def postpone_todo(
     await db.flush()
     await db.refresh(todo)
     return todo
-
-
-# ---- 목표 진행률 ---------------------------------------------------------------------
-
-
-async def goal_progress(db: AsyncSession, goal: Goal) -> dict[str, Any]:
-    """Goal.progress (§1.7). 목표 수가 적어 요청 시점에 계산한다."""
-    monday, sunday = week_range(service_today())
-    row = (
-        await db.execute(
-            select(
-                func.count(Todo.todo_id).filter(Todo.status == "done"),
-                func.count(Todo.todo_id).filter(
-                    Todo.status == "done", Todo.date >= monday, Todo.date <= sunday
-                ),
-            ).where(Todo.goal_id == goal.goal_id, Todo.deleted_at.is_(None))
-        )
-    ).one()
-    done_count, week_done = int(row[0]), int(row[1])
-
-    if goal.type == "recurring" and goal.frequency_times:
-        weeks = goal.duration_weeks or 1
-        per_week = (
-            goal.frequency_times
-            if goal.frequency_per == "week"
-            else max(goal.frequency_times // 4, 1)
-        )
-        target = goal.frequency_times * (
-            weeks if goal.frequency_per == "week" else max(weeks // 4, 1)
-        )
-        week_target = per_week
-    else:
-        target, week_target = 1, 1
-
-    return {
-        "goal_id": goal.goal_id,
-        "target_count": target,
-        "done_count": done_count,
-        "achievement_rate": round(min(done_count / target, 1.0), 2) if target else 0.0,
-        "current_week_done": week_done,
-        "current_week_target": week_target,
-    }

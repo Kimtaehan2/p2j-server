@@ -10,6 +10,7 @@ from fastapi import APIRouter, Query, Response
 from app.core.deps import CurrentUser, DbSession
 from app.core.response import no_content, ok
 from app.schemas.todo import (
+    TodoBulkRequest,
     TodoCompleteRequest,
     TodoCreateRequest,
     TodoPostponeRequest,
@@ -41,6 +42,12 @@ async def week(
 @router.post("", status_code=201, summary="단건 생성")
 async def create(user: CurrentUser, db: DbSession, body: TodoCreateRequest) -> dict[str, Any]:
     return ok(todo_to_dict(await svc.create_todo(db, user, body)))
+
+
+@router.post("/bulk", status_code=201, summary="AI 미리보기 확정 저장 (전체 성공 또는 전체 롤백)")
+async def create_bulk(user: CurrentUser, db: DbSession, body: TodoBulkRequest) -> dict[str, Any]:
+    todos = await svc.create_bulk(db, user, body)
+    return ok({"items": [todo_to_dict(t) for t in todos], "created_count": len(todos)})
 
 
 @router.get("/{todo_id}", summary="상세")

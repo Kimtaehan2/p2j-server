@@ -16,9 +16,9 @@
 
 ---
 
-## 현재 상태 (3~5주차 — 스캐폴딩 · 인증 · TODO)
+## 현재 상태 (3~9주차 BE 항목 — 스캐폴딩 · 인증 · 목표 · TODO · AI 파싱)
 
-**인증과 TODO 까지 구현되어 있다.** 목표 API, AI, 선언·그룹, 통계는 아직 없다.
+**인증 · 목표 · TODO · AI 파싱까지 구현되어 있다.** 선언·증거·그룹·통계·04:00 배치는 아직 없다.
 
 동작하는 것:
 
@@ -29,20 +29,24 @@
   검증 오류는 **400** + 필드별 **한국어** 메시지. 404·405·500 도 같은 형식
 - 오류 코드 카탈로그 35종 (`app/core/errors.py`) — API 명세 §1.4 와 1:1
 - **인증 API** `/v1/auth/signup · login · refresh · logout · me` — bcrypt, access 30분, refresh rotation·재사용 감지 (§3)
-- **TODO API** `/v1/todos` 하루 목록+summary · `week` · 생성 · 상세 · 수정 · 삭제 · `complete` · `uncomplete` · `postpone` (§5)
+- **목표 API** `/v1/goals` 목록(status 필터·커서) · 생성 · 상세 · 수정 · `archive` · 삭제 (§4). `progress` 는 요청 시 계산
+- **TODO API** `/v1/todos` 하루 목록+summary · `week` · 생성 · `bulk` · 상세 · 수정 · 삭제 · `complete` · `uncomplete` · `postpone` (§5)
   선언 잠금(`DECLARED_TODO_LOCKED`), 미루기 횟수, 목표 조인(`goal_title`), 완료 시 `goal_progress` 계산까지
+- **AI 입력** `/v1/ai/parse` 3단계 폴백(LLM → 규칙 파서 → 원문) + `/v1/ai/quota` (§6). LLM 은 `OPENAI_API_KEY` 가 있을 때만, 없으면 규칙 파서로
 - `GET /v1/health` — PostgreSQL `SELECT 1` 과 Redis `PING` 을 실제로 확인. 하나라도 죽으면 503
 - SQLAlchemy 모델 `users`, `refresh_tokens`, `goals`, `todos` + Alembic 마이그레이션 2건
 - 04:00 KST 하루 경계 유틸(`app/core/time.py`)과 테스트
 - Swagger UI `/v1/docs`, OpenAPI JSON `/v1/openapi.json`
-- pytest 63개 (DB·Redis 없이 SQLite 로 돈다)
+- pytest 87개 (DB·Redis 없이 SQLite 로 돈다)
 
 아직 없는 것과 임시 처리:
 
-- `/goals/*` 엔드포인트 (6주차). `goals` 테이블과 모델은 있어서 TODO 가 목표를 참조할 수 있다.
 - `GET /todos` 의 `declaration` 은 항상 `null`, `complete` 응답의 `personal_streak` 은 항상 `0` — 선언 기능(12주차) 뒤에 채운다.
 - `/todos/week` 는 전부 실시간 집계. `user_daily_stats`(10주차) 가 생기면 과거 일자는 거기서 읽는다.
-- `/todos/bulk`(8주차), `/todos/reorder`(P1), 로그인 실패 rate limit([결정 필요] A9).
+- `/todos/reorder`(P1), `/ai/transcribe`(P1), `/todos/load-check`(P1), 로그인 실패 rate limit([결정 필요] A9).
+- AI 쿼터는 Redis 카운터. Redis 가 없으면 카운트를 건너뛰고 무제한으로 동작한다(로그만 남김).
+- `ai_parses` 로그 테이블(정확도 측정 근거)은 아직 없다. `parse_id` 는 응답에만 존재한다.
+- `DELETE /goals/{id}` 는 [결정 필요 A8] 결과에 따라 지울 수 있다.
 
 ---
 
@@ -205,8 +209,8 @@ p2j-server/
 │  ├─ schemas/                 응답 직렬화 함수 · Pydantic 요청 스키마
 │  ├─ api/v1/
 │  │  ├─ router.py
-│  │  └─ endpoints/            health · auth · todos
-│  └─ services/                비즈니스 로직 — auth.py · todos.py
+│  │  └─ endpoints/            health · auth · goals · todos · ai
+│  └─ services/                비즈니스 로직 — auth · goals · todos · ai_parse · ai/(llm·rules·pipeline·quota)
 ├─ alembic/versions/           마이그레이션
 ├─ tests/                      pytest (SQLite 인메모리)
 ├─ docs/                       명세 원문 · 결정 기록 · 담당 영역

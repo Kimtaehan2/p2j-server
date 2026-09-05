@@ -3,7 +3,7 @@
 from __future__ import annotations
 
 from datetime import date as date_type
-from typing import Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -37,6 +37,24 @@ class TodoUpdateRequest(BaseModel):
     estimated_minutes: int | None = Field(default=None, ge=1, le=1440)
     order: int | None = Field(default=None, ge=1)
     memo: str | None = Field(default=None, max_length=500)
+
+
+class TodoBulkItem(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    title: str = Field(min_length=1, max_length=100)
+    date: date_type | None = None
+    goal_id: int | None = None
+    estimated_minutes: int | None = Field(default=None, ge=1, le=1440)
+    memo: str | None = Field(default=None, max_length=500)
+
+
+class TodoBulkRequest(BaseModel):
+    """AI 미리보기 확정 저장 (§5 /todos/bulk). 하나라도 실패하면 전체 롤백."""
+
+    source: Literal["manual", "ai_suggested"] = "ai_suggested"
+    parse_id: str | None = Field(default=None, max_length=40)
+    items: list[TodoBulkItem] = Field(min_length=1, max_length=20)
 
 
 class TodoCompleteRequest(BaseModel):

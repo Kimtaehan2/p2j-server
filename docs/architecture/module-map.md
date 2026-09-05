@@ -20,16 +20,23 @@ app/
 ├─ schemas/
 │  ├─ user.py                  user_to_dict() · public_user_to_dict()
 │  ├─ auth.py                  Signup/Login/Refresh/Logout 요청
-│  └─ todo.py                  Todo 요청 4종 · todo_to_dict() · summary_dict()
+│  ├─ goal.py                  Goal 요청 · goal_to_dict()
+│  ├─ todo.py                  Todo 요청(bulk 포함) · todo_to_dict() · summary_dict()
+│  └─ ai.py                    ParseRequest
 ├─ api/v1/
 │  ├─ router.py
 │  └─ endpoints/
 │     ├─ health.py             GET /health (probe 는 Depends 로 교체 가능)
 │     ├─ auth.py               signup · login · refresh · logout · me
-│     └─ todos.py              목록 · week · CRUD · complete · uncomplete · postpone
+│     ├─ goals.py              목록(커서) · 생성 · 상세 · 수정 · archive · 삭제
+│     ├─ todos.py              목록 · week · CRUD · bulk · complete · uncomplete · postpone
+│     └─ ai.py                 parse · quota
 └─ services/
    ├─ auth.py                  signup · login · issue_session · rotate_refresh_token · revoke_*
-   └─ todos.py                 TODO 규칙 (선언 잠금 · 날짜 범위 · 미루기 · goal_progress)
+   ├─ goals.py                 goal_progress · 팔레트 · end_date 계산 · 커서 목록
+   ├─ todos.py                 TODO 규칙 (선언 잠금 · 날짜 범위 · 미루기 · bulk 롤백)
+   ├─ ai_parse.py              /ai/parse 조립 (목표 힌트 · 쿼터 · 파이프라인)
+   └─ ai/                      schemas · llm (GPT-4o-mini 구조화 출력) · rules · pipeline · quota
 ```
 
 ## 앞으로 만들 것
@@ -40,12 +47,8 @@ app/
 ```
 app/api/v1/endpoints/          app/services/              app/db/models/
 ├─ users.py                    ├─ users.py
-├─ goals.py                    ├─ goals.py
-├─ todos.py (+bulk, reorder)   ├─ todos.py (+bulk)
-├─ ai.py                       ├─ ai/                     ├─ ai_parse.py
-│                              │  ├─ llm.py
-│                              │  ├─ rules.py
-│                              │  └─ pipeline.py
+├─ todos.py (+reorder P1)                                 ├─ ai_parse.py (정확도 로그)
+├─ ai.py (+transcribe P1)      ├─ ai/ (Colab 검증 코드로 rules.py 교체)
 ├─ declarations.py             ├─ declarations.py         ├─ declaration.py (+items)
 ├─ groups.py                   ├─ groups.py               ├─ group.py (+members, invites)
 │                              ├─ feed.py                 ├─ feed_item.py (+reactions)
