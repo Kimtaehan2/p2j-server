@@ -20,7 +20,9 @@ class User(TimestampMixin, Base):
     nickname: Mapped[str] = mapped_column(String(30), nullable=False)
     profile_image_url: Mapped[str | None] = mapped_column(String(500))
     # 하루 경계. 명세는 전역 04:00 고정이지만 ERD 컬럼은 남긴다 (pending A-2).
-    day_start_hour: Mapped[int] = mapped_column(SmallInteger, nullable=False, default=4)
+    day_start_hour: Mapped[int] = mapped_column(
+        SmallInteger, nullable=False, default=4, server_default="4"
+    )
     # soft delete. 30일 뒤 배치가 완전 삭제한다 (BR-14).
     deleted_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 

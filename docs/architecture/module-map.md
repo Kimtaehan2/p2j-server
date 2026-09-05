@@ -16,16 +16,20 @@ app/
 │  ├─ base.py                  Base · naming_convention · BigIntPK · TimestampMixin
 │  ├─ session.py               async engine · sessionmaker (테스트에서 교체 가능)
 │  ├─ redis.py                 redis.asyncio 클라이언트
-│  └─ models/                  User · RefreshToken
+│  └─ models/                  User · RefreshToken · Goal · Todo
 ├─ schemas/
-│  └─ user.py                  user_to_dict() · public_user_to_dict()
+│  ├─ user.py                  user_to_dict() · public_user_to_dict()
+│  ├─ auth.py                  Signup/Login/Refresh/Logout 요청
+│  └─ todo.py                  Todo 요청 4종 · todo_to_dict() · summary_dict()
 ├─ api/v1/
 │  ├─ router.py
 │  └─ endpoints/
 │     ├─ health.py             GET /health (probe 는 Depends 로 교체 가능)
-│     └─ auth.py               GET /auth/me 만
+│     ├─ auth.py               signup · login · refresh · logout · me
+│     └─ todos.py              목록 · week · CRUD · complete · uncomplete · postpone
 └─ services/
-   └─ auth.py                  issue_session · rotate_refresh_token · revoke_*
+   ├─ auth.py                  signup · login · issue_session · rotate_refresh_token · revoke_*
+   └─ todos.py                 TODO 규칙 (선언 잠금 · 날짜 범위 · 미루기 · goal_progress)
 ```
 
 ## 앞으로 만들 것
@@ -35,11 +39,9 @@ app/
 
 ```
 app/api/v1/endpoints/          app/services/              app/db/models/
-├─ auth.py  (+signup/login/     ├─ auth.py (+가입·로그인 규칙)
-│            refresh/logout)
 ├─ users.py                    ├─ users.py
-├─ goals.py                    ├─ goals.py                ├─ goal.py
-├─ todos.py                    ├─ todos.py                ├─ todo.py
+├─ goals.py                    ├─ goals.py
+├─ todos.py (+bulk, reorder)   ├─ todos.py (+bulk)
 ├─ ai.py                       ├─ ai/                     ├─ ai_parse.py
 │                              │  ├─ llm.py
 │                              │  ├─ rules.py

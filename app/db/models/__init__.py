@@ -5,7 +5,9 @@ Alembic 이 metadata 를 볼 수 있도록 모든 모델을 여기서 import 한
 """
 
 from app.db.base import Base
+from app.db.models.goal import Goal
 from app.db.models.refresh_token import RefreshToken
+from app.db.models.todo import Todo
 from app.db.models.user import User
 
-__all__ = ["Base", "RefreshToken", "User"]
+__all__ = ["Base", "Goal", "RefreshToken", "Todo", "User"]

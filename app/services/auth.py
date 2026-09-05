@@ -12,16 +12,54 @@ from typing import Any
 from sqlalchemy import select, update
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.core.errors import Unauthorized
+from app.core.errors import AppError, InvalidCredentials, Unauthorized
 from app.core.security import (
     create_access_token,
     generate_refresh_token,
+    hash_password,
     hash_refresh_token,
+    verify_password,
 )
 from app.core.time import now_utc, service_today
 from app.db.models.refresh_token import RefreshToken
 from app.db.models.user import User
+from app.schemas.auth import LoginRequest, SignupRequest
 from app.schemas.user import user_to_dict
+
+PASSWORD_MIN, PASSWORD_MAX = 8, 72  # 72 = bcrypt 입력 한계
+
+
+def _check_password_strength(password: str) -> None:
+    if not PASSWORD_MIN <= len(password) <= PASSWORD_MAX:
+        raise AppError("WEAK_PASSWORD")  # 명세 §3: details 없이
+
+
+async def signup(db: AsyncSession, body: SignupRequest) -> dict[str, Any]:
+    """가입 + 자동 로그인. 이메일은 소문자로 정규화한다."""
+    _check_password_strength(body.password)
+    email = body.email.lower()
+
+    exists = await db.scalar(select(User.user_id).where(User.email == email))
+    if exists is not None:
+        raise AppError(
+            "EMAIL_ALREADY_EXISTS", details={"email": "이미 가입된 이메일이에요."}
+        )  # 모바일이 details.email 을 입력칸 아래에 붙인다
+
+    user = User(email=email, password_hash=hash_password(body.password), nickname=body.nickname)
+    db.add(user)
+    await db.flush()
+    await db.refresh(user)
+    return await issue_session(db, user)
+
+
+async def login(db: AsyncSession, body: LoginRequest) -> dict[str, Any]:
+    """이메일 없음과 비밀번호 틀림을 구분하지 않는다 (계정 존재 여부 노출 방지)."""
+    user = await db.scalar(
+        select(User).where(User.email == body.email.lower(), User.deleted_at.is_(None))
+    )
+    if user is None or not verify_password(body.password, user.password_hash):
+        raise InvalidCredentials()
+    return await issue_session(db, user)
 
 
 async def issue_session(db: AsyncSession, user: User) -> dict[str, Any]:
@@ -56,12 +94,14 @@ async def rotate_refresh_token(db: AsyncSession, raw_refresh: str) -> dict[str, 
         raise Unauthorized()
 
     if row.revoked_at is not None:
+        # 재사용 감지. 예외를 던지면 get_db 가 rollback 하므로 폐기는 여기서 먼저 commit 한다.
         await revoke_all_for_user(db, row.user_id, now)
+        await db.commit()
         raise Unauthorized()
 
     if _as_utc(row.expires_at) <= now:
         row.revoked_at = now
-        await db.flush()
+        await db.commit()
         raise Unauthorized()
 
     user = await db.scalar(

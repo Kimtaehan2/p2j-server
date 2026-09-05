@@ -16,9 +16,9 @@
 
 ---
 
-## 현재 상태 (3주차 — 스캐폴딩)
+## 현재 상태 (3~5주차 — 스캐폴딩 · 인증 · TODO)
 
-**기반 골격까지 구현되어 있다.** 회원가입·로그인, 할 일, 목표, AI, 그룹 기능은 아직 없다.
+**인증과 TODO 까지 구현되어 있다.** 목표 API, AI, 선언·그룹, 통계는 아직 없다.
 
 동작하는 것:
 
@@ -28,15 +28,21 @@
 - **공통 오류 핸들러** `{ error: { code, message, details } }` — FastAPI 기본 `{"detail": [...]}` 를 덮어쓴다.
   검증 오류는 **400** + 필드별 **한국어** 메시지. 404·405·500 도 같은 형식
 - 오류 코드 카탈로그 35종 (`app/core/errors.py`) — API 명세 §1.4 와 1:1
-- **JWT 골격** — bcrypt 해시, access 토큰(30분), refresh 토큰 rotation·재사용 감지, `Depends(get_current_user)`
-- `GET /v1/auth/me` — 보호 엔드포인트 예시. Bearer → 토큰 검증 → DB 조회 → `today` 포함 응답
+- **인증 API** `/v1/auth/signup · login · refresh · logout · me` — bcrypt, access 30분, refresh rotation·재사용 감지 (§3)
+- **TODO API** `/v1/todos` 하루 목록+summary · `week` · 생성 · 상세 · 수정 · 삭제 · `complete` · `uncomplete` · `postpone` (§5)
+  선언 잠금(`DECLARED_TODO_LOCKED`), 미루기 횟수, 목표 조인(`goal_title`), 완료 시 `goal_progress` 계산까지
 - `GET /v1/health` — PostgreSQL `SELECT 1` 과 Redis `PING` 을 실제로 확인. 하나라도 죽으면 503
-- SQLAlchemy 모델 `users`, `refresh_tokens` + Alembic 최초 마이그레이션
+- SQLAlchemy 모델 `users`, `refresh_tokens`, `goals`, `todos` + Alembic 마이그레이션 2건
 - 04:00 KST 하루 경계 유틸(`app/core/time.py`)과 테스트
 - Swagger UI `/v1/docs`, OpenAPI JSON `/v1/openapi.json`
-- pytest 42개 (DB·Redis 없이 SQLite 로 돈다)
+- pytest 63개 (DB·Redis 없이 SQLite 로 돈다)
 
-다음 작업(4주차)은 `/auth/signup·login·refresh·logout` 이다. `app/services/auth.py` 의 함수를 호출하는 엔드포인트만 추가하면 된다.
+아직 없는 것과 임시 처리:
+
+- `/goals/*` 엔드포인트 (6주차). `goals` 테이블과 모델은 있어서 TODO 가 목표를 참조할 수 있다.
+- `GET /todos` 의 `declaration` 은 항상 `null`, `complete` 응답의 `personal_streak` 은 항상 `0` — 선언 기능(12주차) 뒤에 채운다.
+- `/todos/week` 는 전부 실시간 집계. `user_daily_stats`(10주차) 가 생기면 과거 일자는 거기서 읽는다.
+- `/todos/bulk`(8주차), `/todos/reorder`(P1), 로그인 실패 rate limit([결정 필요] A9).
 
 ---
 
@@ -195,12 +201,12 @@ p2j-server/
 │  │  ├─ base.py               DeclarativeBase · naming_convention
 │  │  ├─ session.py            async engine · sessionmaker
 │  │  ├─ redis.py
-│  │  └─ models/               users · refresh_tokens (나머지는 ERD 확정 후)
+│  │  └─ models/               users · refresh_tokens · goals · todos
 │  ├─ schemas/                 응답 직렬화 함수 · Pydantic 요청 스키마
 │  ├─ api/v1/
 │  │  ├─ router.py
-│  │  └─ endpoints/            health · auth (me 만)
-│  └─ services/                비즈니스 로직 — auth.py (토큰 발급·회전·폐기)
+│  │  └─ endpoints/            health · auth · todos
+│  └─ services/                비즈니스 로직 — auth.py · todos.py
 ├─ alembic/versions/           마이그레이션
 ├─ tests/                      pytest (SQLite 인메모리)
 ├─ docs/                       명세 원문 · 결정 기록 · 담당 영역

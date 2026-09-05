@@ -10,8 +10,10 @@
 
 ## 현재 상태
 
-`users`, `refresh_tokens` 두 테이블과 최초 마이그레이션(`0001_users_refresh_tokens`)이 있다.
-JWT 골격이 참조하는 최소 범위다. 나머지 ERD v1 테이블은 **2주차 ERD 확정 후** 추가한다.
+`0001_users_refresh_tokens`, `0002_goals_todos` 두 마이그레이션이 있다 (테이블 4개).
+ENUM 대신 varchar + CHECK 를 썼다 (ERD §5 의 선택지 — 값 추가가 마이그레이션 한 줄).
+`todos.postpone_count` 는 pending A-6 의 (a)안, `goals.status` 의 `archived` 는 API 명세 A2 기본값을 따랐다.
+나머지 ERD v1 테이블은 **ERD 확정 후** 같은 방식(모델 → autogenerate → 검토)으로 추가한다.
 
 ## 로컬 작업 순서
 
